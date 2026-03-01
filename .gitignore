@@ -1,0 +1,5 @@
+ralph-hub
+*.db
+config.yaml
+web/node_modules/
+web/.next/

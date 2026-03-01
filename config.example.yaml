@@ -1,0 +1,25 @@
+# ralph-hub configuration
+# Copy to config.yaml and edit as needed.
+
+server:
+  port: 8080
+
+storage:
+  driver: sqlite  # "sqlite" or "postgres"
+  sqlite:
+    path: ./ralph-hub.db
+  postgres:
+    dsn: postgres://user:pass@localhost:5432/ralph_hub?sslmode=disable
+
+auth:
+  api_keys:
+    - name: my-agent
+      key: changeme
+
+webhooks:
+  - url: http://example.com/webhook
+    events:
+      - heartbeat
+      - session.end
+    filter:
+      passed_only: false
