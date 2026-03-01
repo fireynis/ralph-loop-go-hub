@@ -61,8 +61,8 @@ function eventSummary(event: RalphEvent): string | null {
         .filter(Boolean)
         .join(' \u00b7 ');
     case 'phase.changed':
-      if (d.from_phase && d.to_phase) {
-        return `${d.from_phase} \u2192 ${d.to_phase}`;
+      if (d.from && d.to) {
+        return `${d.from} \u2192 ${d.to}`;
       }
       return d.phase || null;
     case 'task.claimed':
@@ -75,7 +75,7 @@ function eventSummary(event: RalphEvent): string | null {
     case 'task.closed':
       return [
         d.task_id ? `Task: ${d.task_id}` : null,
-        d.verdict || null,
+        d.final_verdict || null,
         d.commit_hash ? `commit ${d.commit_hash.slice(0, 8)}` : null,
       ]
         .filter(Boolean)

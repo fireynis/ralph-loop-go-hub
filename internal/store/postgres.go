@@ -170,7 +170,7 @@ func (s *PostgresStore) GetInstanceHistory(ctx context.Context, instanceID strin
 			TaskID:       data.TaskID,
 			Notes:        data.Notes,
 			ReviewCycles: data.ReviewCycles,
-			FinalVerdict: data.Verdict,
+			FinalVerdict: data.FinalVerdict,
 		}
 		if data.Passed != nil {
 			rec.Passed = *data.Passed

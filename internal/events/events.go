@@ -49,16 +49,18 @@ type Data struct {
 	TaskID        string `json:"task_id,omitempty"`
 	Passed        *bool  `json:"passed,omitempty"`
 	Notes         string `json:"notes,omitempty"`
-	ReviewCycles  int    `json:"review_cycles,omitempty"`
-	Verdict       string `json:"verdict,omitempty"`
-	Phase         string `json:"phase,omitempty"`
-	FromPhase     string `json:"from_phase,omitempty"`
-	ToPhase       string `json:"to_phase,omitempty"`
-	Reason        string `json:"reason,omitempty"`
-	Description   string `json:"description,omitempty"`
-	CommitHash    string `json:"commit_hash,omitempty"`
-	Priority      int    `json:"priority,omitempty"`
-	MaxIterations int    `json:"max_iterations,omitempty"`
+	ReviewCycles    int    `json:"review_cycles,omitempty"`
+	FinalVerdict    string `json:"final_verdict,omitempty"`
+	Phase           string `json:"phase,omitempty"`
+	From            string `json:"from,omitempty"`
+	To              string `json:"to,omitempty"`
+	Reason          string `json:"reason,omitempty"`
+	Description     string `json:"description,omitempty"`
+	CommitHash      string `json:"commit_hash,omitempty"`
+	Priority        int    `json:"priority,omitempty"`
+	MaxIterations   int    `json:"max_iterations,omitempty"`
+	SleepSeconds    int    `json:"sleep_seconds,omitempty"`
+	MaxReviewCycles int    `json:"max_review_cycles,omitempty"`
 }
 
 // Context carries a snapshot of the session state at the time the event

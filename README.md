@@ -165,7 +165,7 @@ curl -X POST http://localhost:8080/api/v1/events \
       "duration_ms": 45000,
       "passed": true,
       "task_id": "beads-123",
-      "verdict": "pass"
+      "final_verdict": "APPROVED"
     },
     "context": {
       "session_id": "sess-abc",
@@ -245,8 +245,8 @@ Every event emitted by Ralph Loop follows this structure:
 | `session.started` | Ralph Loop begins a run | `max_iterations` |
 | `session.ended` | Loop finishes or is interrupted | `reason` (complete / interrupted / error) |
 | `iteration.started` | New iteration begins | `iteration`, `phase` |
-| `iteration.completed` | Iteration finishes | `duration_ms`, `task_id`, `passed`, `notes`, `review_cycles`, `verdict` |
-| `phase.changed` | Pipeline phase transition | `from_phase`, `to_phase` |
+| `iteration.completed` | Iteration finishes | `duration_ms`, `task_id`, `passed`, `notes`, `review_cycles`, `final_verdict` |
+| `phase.changed` | Pipeline phase transition | `from`, `to` |
 | `task.claimed` | Ralph picks up a task from the tracker | `task_id`, `priority`, `description` |
 | `task.closed` | Task completed and committed | `task_id`, `commit_hash` |
 

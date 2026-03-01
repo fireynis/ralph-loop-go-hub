@@ -129,7 +129,7 @@ func TestPostgres_IterationHistory(t *testing.T) {
 				Passed:       &passed,
 				Notes:        "done",
 				ReviewCycles: 1,
-				Verdict:      "APPROVED",
+				FinalVerdict: "APPROVED",
 			},
 			Context: &events.Context{SessionID: "sess_1", Status: "running"},
 		}

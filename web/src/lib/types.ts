@@ -25,15 +25,17 @@ export interface EventData {
   passed?: boolean;
   notes?: string;
   review_cycles?: number;
-  verdict?: string;
+  final_verdict?: string;
   phase?: string;
-  from_phase?: string;
-  to_phase?: string;
+  from?: string;
+  to?: string;
   reason?: string;
   description?: string;
   commit_hash?: string;
   priority?: number;
   max_iterations?: number;
+  sleep_seconds?: number;
+  max_review_cycles?: number;
 }
 
 export interface RalphEvent {

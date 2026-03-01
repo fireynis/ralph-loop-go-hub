@@ -71,7 +71,7 @@ Every event carries a full context envelope so the dashboard can reconstruct sta
     "passed": true,
     "notes": "Added auth middleware",
     "review_cycles": 1,
-    "verdict": "APPROVED"
+    "final_verdict": "APPROVED"
   },
 
   "context": {
@@ -101,8 +101,8 @@ Every event carries a full context envelope so the dashboard can reconstruct sta
 | `session.started` | Ralph loop begins | repo, epic, max_iterations, config |
 | `session.ended` | Loop finishes or killed | reason (complete/interrupted/error), summary stats |
 | `iteration.started` | New iteration begins | iteration_number, phase |
-| `iteration.completed` | Iteration done | duration, task_id, passed, notes, review_cycles, verdict |
-| `phase.changed` | Pipeline phase transition | from_phase, to_phase |
+| `iteration.completed` | Iteration done | duration, task_id, passed, notes, review_cycles, final_verdict |
+| `phase.changed` | Pipeline phase transition | from, to |
 | `task.claimed` | Ralph picks up a task | task_id, priority, description |
 | `task.closed` | Task completed | task_id, commit_hash |
 
