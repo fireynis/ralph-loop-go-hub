@@ -3,3 +3,4 @@ ralph-hub
 config.yaml
 web/node_modules/
 web/.next/
+web/out/
