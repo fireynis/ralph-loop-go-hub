@@ -4,3 +4,5 @@ config.yaml
 web/node_modules/
 web/.next/
 web/out/
+internal/frontend/dist/
+!internal/frontend/dist/.gitkeep
