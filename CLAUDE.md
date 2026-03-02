@@ -70,7 +70,7 @@ cd web && npm run lint    # ESLint
 ### Test Patterns
 
 - **Go unit tests**: Use in-memory SQLite (`:memory:`) for store tests. No external dependencies needed.
-- **Postgres tests**: Skip behind an environment variable check (require `RALPH_HUB_POSTGRES_DSN`).
+- **Postgres tests**: Skip behind an environment variable check (require `RALPH_TEST_POSTGRES_DSN`).
 - **Test files**: Colocated with source as `*_test.go`.
 
 ## Key Interfaces
