@@ -54,6 +54,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/instances/{id}/history", s.handleGetInstanceHistory)
 	mux.HandleFunc("GET /api/v1/sessions", s.handleGetSessions)
 	mux.HandleFunc("GET /api/v1/sessions/{id}", s.handleGetSessionDetail)
+	mux.HandleFunc("POST /api/v1/sessions/{id}/end", s.handleEndSession)
 	mux.HandleFunc("GET /api/v1/stats", s.handleGetStats)
 
 	// WebSocket endpoint (no auth).

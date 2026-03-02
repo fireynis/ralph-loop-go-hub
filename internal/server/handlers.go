@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -155,4 +156,42 @@ func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, stats)
+}
+
+// handleEndSession manually closes a running session by synthesizing
+// a session.ended event.
+func (s *Server) handleEndSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "session id is required")
+		return
+	}
+
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	// Body is optional; ignore decode errors for empty body.
+	json.NewDecoder(r.Body).Decode(&body)
+
+	if err := s.store.EndSession(r.Context(), id, body.Reason); err != nil {
+		if errors.Is(err, store.ErrSessionNotFound) {
+			writeError(w, http.StatusNotFound, "session not found")
+			return
+		}
+		if errors.Is(err, store.ErrSessionAlreadyEnded) {
+			writeError(w, http.StatusConflict, "session already ended")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to end session")
+		return
+	}
+
+	// Return the updated session detail.
+	detail, err := s.store.GetSessionDetail(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "session ended but failed to fetch detail")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, detail)
 }

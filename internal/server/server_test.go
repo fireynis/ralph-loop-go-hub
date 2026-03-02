@@ -324,3 +324,84 @@ func TestCORS_DisallowedOrigin(t *testing.T) {
 		t.Errorf("expected no Allow-Origin header, got %q", got)
 	}
 }
+
+func TestEndSession_Success(t *testing.T) {
+	ts := testServer(t)
+	defer ts.Close()
+
+	// Create a running session via event ingestion.
+	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/events", bytes.NewReader(validEventJSON()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-key")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post event: %v", err)
+	}
+	resp.Body.Close()
+
+	// End the session.
+	body := []byte(`{"reason": "stale"}`)
+	resp, err = http.Post(ts.URL+"/api/v1/sessions/sess-001/end", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("end session: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var detail store.SessionDetail
+	json.NewDecoder(resp.Body).Decode(&detail)
+	if detail.Session.EndedAt == nil {
+		t.Error("expected session to have ended_at set")
+	}
+}
+
+func TestEndSession_NotFound(t *testing.T) {
+	ts := testServer(t)
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/api/v1/sessions/nonexistent/end", "application/json", nil)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestEndSession_AlreadyEnded(t *testing.T) {
+	ts := testServer(t)
+	defer ts.Close()
+
+	// Create a session.
+	req, _ := http.NewRequest("POST", ts.URL+"/api/v1/events", bytes.NewReader(validEventJSON()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-key")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post event: %v", err)
+	}
+	resp.Body.Close()
+
+	// End it once.
+	resp, err = http.Post(ts.URL+"/api/v1/sessions/sess-001/end", "application/json", nil)
+	if err != nil {
+		t.Fatalf("first end: %v", err)
+	}
+	resp.Body.Close()
+
+	// End it again — should be 409.
+	resp, err = http.Post(ts.URL+"/api/v1/sessions/sess-001/end", "application/json", nil)
+	if err != nil {
+		t.Fatalf("second end: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("expected 409, got %d", resp.StatusCode)
+	}
+}
