@@ -2,9 +2,15 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/fireynis/ralph-hub/internal/events"
+)
+
+var (
+	ErrSessionNotFound    = errors.New("session not found")
+	ErrSessionAlreadyEnded = errors.New("session already ended")
 )
 
 // InstanceState represents the current state of a Ralph instance.
@@ -75,5 +81,6 @@ type Store interface {
 	GetSessions(ctx context.Context, filter SessionFilter) ([]Session, error)
 	GetSessionDetail(ctx context.Context, sessionID string) (*SessionDetail, error)
 	GetAggregateStats(ctx context.Context) (*AggregateStats, error)
+	EndSession(ctx context.Context, sessionID string, reason string) error
 	Close() error
 }

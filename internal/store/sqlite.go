@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/fireynis/ralph-hub/internal/events"
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
 
@@ -322,6 +323,9 @@ func (s *SQLiteStore) GetSessionDetail(ctx context.Context, sessionID string) (*
 	}
 	if last.Type == events.TypeSessionEnded {
 		detail.Session.EndedAt = &last.Timestamp
+		if last.Data != nil {
+			detail.Session.EndReason = last.Data.Reason
+		}
 	}
 
 	return detail, rows.Err()
@@ -367,6 +371,57 @@ func (s *SQLiteStore) GetAggregateStats(ctx context.Context) (*AggregateStats, e
 	}
 
 	return stats, nil
+}
+
+func (s *SQLiteStore) EndSession(ctx context.Context, sessionID string, reason string) error {
+	var instanceID, repo, epic, ctxJSON, lastTS string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT instance_id, repo, epic, context_json, timestamp FROM events
+		 WHERE json_extract(context_json, '$.session_id') = ?
+		 ORDER BY timestamp DESC LIMIT 1`, sessionID).Scan(&instanceID, &repo, &epic, &ctxJSON, &lastTS)
+	if err != nil {
+		return ErrSessionNotFound
+	}
+
+	var endCount int
+	s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM events
+		 WHERE json_extract(context_json, '$.session_id') = ? AND type = ?`,
+		sessionID, string(events.TypeSessionEnded)).Scan(&endCount)
+	if endCount > 0 {
+		return ErrSessionAlreadyEnded
+	}
+
+	var evtCtx events.Context
+	if err := json.Unmarshal([]byte(ctxJSON), &evtCtx); err != nil {
+		return fmt.Errorf("unmarshal context: %w", err)
+	}
+	evtCtx.Status = "ended"
+
+	if reason == "" {
+		reason = "manual_close"
+	}
+
+	// Use whichever is later: now or the last event's timestamp + 1ms,
+	// so the synthesized event is guaranteed to sort after all existing events.
+	now := time.Now().UTC()
+	lastTime, err := time.Parse(time.RFC3339Nano, lastTS)
+	if err == nil && !lastTime.Before(now) {
+		now = lastTime.Add(time.Millisecond)
+	}
+
+	evt := events.Event{
+		EventID:    uuid.NewString(),
+		Type:       events.TypeSessionEnded,
+		Timestamp:  now,
+		InstanceID: instanceID,
+		Repo:       repo,
+		Epic:       epic,
+		Data:       &events.Data{Reason: reason},
+		Context:    &evtCtx,
+	}
+
+	return s.SaveEvent(ctx, evt)
 }
 
 func (s *SQLiteStore) Close() error {

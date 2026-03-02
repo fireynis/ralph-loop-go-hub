@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -301,5 +302,92 @@ func TestSQLite_GetAggregateStats(t *testing.T) {
 	expectedRate := 2.0 / 3.0
 	if stats.OverallPassRate < expectedRate-0.01 || stats.OverallPassRate > expectedRate+0.01 {
 		t.Errorf("pass_rate = %f, want ~%f", stats.OverallPassRate, expectedRate)
+	}
+}
+
+func TestSQLite_EndSession(t *testing.T) {
+	s := newTestSQLite(t)
+	ctx := context.Background()
+
+	s.SaveEvent(ctx, events.Event{
+		EventID: "evt_start", Type: events.TypeSessionStarted,
+		Timestamp: time.Now().UTC(), InstanceID: "app/BD-1", Repo: "app", Epic: "BD-1",
+		Context: &events.Context{
+			SessionID: "sess_end_test", MaxIterations: 10, Status: "running",
+			Analytics: &events.Analytics{PassedCount: 2, TasksClosed: 1},
+		},
+	})
+	passed := true
+	s.SaveEvent(ctx, events.Event{
+		EventID: "evt_iter", Type: events.TypeIterationCompleted,
+		Timestamp: time.Now().UTC().Add(time.Second), InstanceID: "app/BD-1", Repo: "app", Epic: "BD-1",
+		Data: &events.Data{Iteration: 1, Passed: &passed},
+		Context: &events.Context{
+			SessionID: "sess_end_test", MaxIterations: 10, Status: "running", CurrentIteration: 1,
+			Analytics: &events.Analytics{PassedCount: 2, TasksClosed: 1},
+		},
+	})
+
+	if err := s.EndSession(ctx, "sess_end_test", "stale"); err != nil {
+		t.Fatalf("EndSession: %v", err)
+	}
+
+	detail, err := s.GetSessionDetail(ctx, "sess_end_test")
+	if err != nil {
+		t.Fatalf("GetSessionDetail: %v", err)
+	}
+	if detail.Session.EndedAt == nil {
+		t.Fatal("expected session to have EndedAt set")
+	}
+	if detail.Session.EndReason != "stale" {
+		t.Errorf("end_reason = %q, want %q", detail.Session.EndReason, "stale")
+	}
+
+	last := detail.Events[len(detail.Events)-1]
+	if last.Type != events.TypeSessionEnded {
+		t.Errorf("last event type = %s, want session.ended", last.Type)
+	}
+	if last.Data.Reason != "stale" {
+		t.Errorf("last event reason = %q, want %q", last.Data.Reason, "stale")
+	}
+
+	instances, err := s.GetActiveInstances(ctx)
+	if err != nil {
+		t.Fatalf("GetActiveInstances: %v", err)
+	}
+	if len(instances) != 0 {
+		t.Errorf("active instances = %d, want 0", len(instances))
+	}
+}
+
+func TestSQLite_EndSession_NotFound(t *testing.T) {
+	s := newTestSQLite(t)
+	ctx := context.Background()
+
+	err := s.EndSession(ctx, "nonexistent", "stale")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Errorf("expected ErrSessionNotFound, got %v", err)
+	}
+}
+
+func TestSQLite_EndSession_AlreadyEnded(t *testing.T) {
+	s := newTestSQLite(t)
+	ctx := context.Background()
+
+	s.SaveEvent(ctx, events.Event{
+		EventID: "evt_start", Type: events.TypeSessionStarted,
+		Timestamp: time.Now().UTC(), InstanceID: "app", Repo: "app",
+		Context: &events.Context{SessionID: "sess_already", Status: "running"},
+	})
+	s.SaveEvent(ctx, events.Event{
+		EventID: "evt_end", Type: events.TypeSessionEnded,
+		Timestamp: time.Now().UTC().Add(time.Second), InstanceID: "app", Repo: "app",
+		Data: &events.Data{Reason: "complete"},
+		Context: &events.Context{SessionID: "sess_already", Status: "running"},
+	})
+
+	err := s.EndSession(ctx, "sess_already", "stale")
+	if !errors.Is(err, ErrSessionAlreadyEnded) {
+		t.Errorf("expected ErrSessionAlreadyEnded, got %v", err)
 	}
 }
