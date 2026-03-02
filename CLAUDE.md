@@ -8,7 +8,7 @@ ralph-hub is a Go API server + Next.js dashboard monorepo for monitoring Ralph L
 
 - **Module path**: `github.com/fireynis/ralph-hub`
 - **Go version**: 1.25.0
-- **Domain**: `ralph-hub.home.arpa` (deployed via Docker + Traefik)
+- **Default port**: 8080
 
 ## Project Structure
 

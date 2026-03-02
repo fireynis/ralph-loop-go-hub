@@ -1,6 +1,7 @@
 ralph-hub
 *.db
 config.yaml
+docker-compose.override.yml
 web/node_modules/
 web/.next/
 web/out/

@@ -39,7 +39,7 @@ cp config.example.yaml config.yaml   # edit API keys, storage, webhooks
 docker compose up -d
 ```
 
-The dashboard is available at `http://ralph-hub.home.arpa` (requires Traefik and DNS) or you can access the API directly at `http://localhost:8080`.
+The dashboard and API are available at `http://localhost:8080`.
 
 ### Local development
 
@@ -66,7 +66,7 @@ Point your [Ralph Loop TUI](https://github.com/fireynis/ralph-loop-tui) instance
 
 ```bash
 ralph-loop \
-  -hub-url http://ralph-hub.home.arpa \
+  -hub-url http://localhost:8080 \
   -hub-api-key rhk_abc123 \
   -instance-id my-app/BD-42
 ```
@@ -74,7 +74,7 @@ ralph-loop \
 Or via environment variables:
 
 ```bash
-export RALPH_HUB_URL=http://ralph-hub.home.arpa
+export RALPH_HUB_URL=http://localhost:8080
 export RALPH_HUB_API_KEY=rhk_abc123
 export RALPH_INSTANCE_ID=my-app/BD-42
 ```
@@ -364,27 +364,21 @@ ralph-hub/
 │       ├── lib/                 # API client utilities, types
 │       └── store/               # Zustand stores (instances, events)
 ├── config.example.yaml          # Example configuration
-├── Dockerfile                   # Multi-stage Go build (golang:1.25-alpine → alpine:3.21)
-├── web/Dockerfile               # Multi-stage Node build (node:22-alpine)
-├── docker-compose.yml           # Two services with Traefik labels
+├── Dockerfile                   # Multi-stage build: Node (frontend) + Go (backend) → single binary
+├── docker-compose.yml           # Single-container deployment
 └── Makefile                     # Build, test, lint, run targets
 ```
 
 ## Docker Deployment
 
-The `docker-compose.yml` runs two services behind a Traefik reverse proxy:
+The `docker-compose.yml` runs a single container that serves both the Go API and the embedded Next.js dashboard on port 8080.
 
-| Service | Container | Port | Traefik Route |
-|---------|-----------|------|---------------|
-| `ralph-hub` | Go API server | 8080 | `ralph-hub.home.arpa` + `/api/*` or `/healthz` (priority 20) |
-| `ralph-hub-web` | Next.js dashboard | 3000 | `ralph-hub.home.arpa` (priority 10, catch-all) |
+```bash
+cp config.example.yaml config.yaml   # edit API keys, storage, webhooks
+docker compose up -d
+```
 
-The API routes take priority so that `/api/*` and `/healthz` hit the Go server, while all other paths fall through to the Next.js frontend.
-
-**Prerequisites:**
-- External Docker network named `proxy` (`docker network create proxy`)
-- Traefik running on the same network
-- DNS resolving `ralph-hub.home.arpa` to the Docker host
+The dashboard and API are available at `http://localhost:8080`. If you need to put it behind a reverse proxy, point the proxy at port 8080.
 
 ## License
 
