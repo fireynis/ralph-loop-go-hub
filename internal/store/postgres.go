@@ -33,6 +33,10 @@ func NewPostgresStore(dsn string) (*PostgresStore, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	if err := s.reconcileInstanceState(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("reconcile: %w", err)
+	}
 	return s, nil
 }
 
@@ -62,6 +66,25 @@ func (s *PostgresStore) migrate() error {
 			context_json JSONB NOT NULL
 		);
 	`)
+	return err
+}
+
+// reconcileInstanceState fixes instances stuck as "running" when their
+// latest session has already ended.
+func (s *PostgresStore) reconcileInstanceState() error {
+	_, err := s.db.Exec(`
+		UPDATE instance_state SET status = 'ended'
+		WHERE status = 'running'
+		AND instance_id IN (
+			SELECT e.instance_id FROM events e
+			WHERE e.type = 'session.ended'
+			AND NOT EXISTS (
+				SELECT 1 FROM events e2
+				WHERE e2.instance_id = e.instance_id
+				AND e2.type = 'session.started'
+				AND e2.timestamp > e.timestamp
+			)
+		)`)
 	return err
 }
 
