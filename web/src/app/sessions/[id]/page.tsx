@@ -96,6 +96,7 @@ export default function SessionDetailPage() {
   const [events, setEvents] = useState<RalphEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
@@ -120,6 +121,32 @@ export default function SessionDetailPage() {
 
     fetchSession();
   }, [params.id]);
+
+  async function closeSession() {
+    if (!confirm('Are you sure you want to close this session?')) return;
+    setClosing(true);
+    try {
+      const res = await fetch(
+        `${getApiBase()}/api/v1/sessions/${params.id}/end`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'manual_close' }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `API error: ${res.status}`);
+      }
+      const data: SessionDetailResponse = await res.json();
+      setSession(data.session);
+      setEvents(data.events);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to close session');
+    } finally {
+      setClosing(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -149,20 +176,31 @@ export default function SessionDetailPage() {
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="mx-auto max-w-4xl px-6 py-12">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            {session.repo}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-400">
-            {session.epic && (
-              <span className="rounded-full bg-gray-800 px-3 py-0.5 text-gray-300">
-                {session.epic}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              {session.repo}
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-400">
+              {session.epic && (
+                <span className="rounded-full bg-gray-800 px-3 py-0.5 text-gray-300">
+                  {session.epic}
+                </span>
+              )}
+              <span className="font-mono text-xs text-gray-500">
+                {session.session_id}
               </span>
-            )}
-            <span className="font-mono text-xs text-gray-500">
-              {session.session_id}
-            </span>
+            </div>
           </div>
+          {!session.ended_at && (
+            <button
+              onClick={closeSession}
+              disabled={closing}
+              className="rounded-lg border border-red-700 bg-red-900/30 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-900/50 disabled:opacity-50"
+            >
+              {closing ? 'Closing...' : 'Close Session'}
+            </button>
+          )}
         </div>
 
         {/* Stats Summary */}
