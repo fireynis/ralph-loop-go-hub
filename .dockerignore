@@ -1,5 +1,8 @@
-web/
+web/node_modules/
+web/.next/
+web/out/
 *.db
 ralph-hub
 .beads/
 .git/
+dist/

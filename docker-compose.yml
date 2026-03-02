@@ -11,23 +11,8 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ralph-hub-api.rule=Host(`ralph-hub.home.arpa`) && (PathPrefix(`/api/`) || PathPrefix(`/healthz`))"
-      - "traefik.http.routers.ralph-hub-api.priority=20"
-      - "traefik.http.services.ralph-hub-api.loadbalancer.server.port=8080"
-
-  ralph-hub-web:
-    build: ./web
-    container_name: ralph-hub-web
-    restart: unless-stopped
-    environment:
-      TZ: America/Toronto
-    networks:
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ralph-hub-web.rule=Host(`ralph-hub.home.arpa`)"
-      - "traefik.http.routers.ralph-hub-web.priority=10"
-      - "traefik.http.services.ralph-hub-web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.ralph-hub.rule=Host(`ralph-hub.home.arpa`)"
+      - "traefik.http.services.ralph-hub.loadbalancer.server.port=8080"
 
 networks:
   proxy:
