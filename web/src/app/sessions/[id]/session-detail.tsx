@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import type { Session, RalphEvent } from '@/lib/types';
 
 function getApiBase(): string {
@@ -91,7 +91,8 @@ interface SessionDetailResponse {
 }
 
 export default function SessionDetailPage() {
-  const params = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const sessionId = pathname.split('/').pop() ?? '';
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<RalphEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,12 +100,12 @@ export default function SessionDetailPage() {
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
-    if (!params.id) return;
+    if (!sessionId) return;
 
     async function fetchSession() {
       try {
         const res = await fetch(
-          `${getApiBase()}/api/v1/sessions/${params.id}`
+          `${getApiBase()}/api/v1/sessions/${sessionId}`
         );
         if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data: SessionDetailResponse = await res.json();
@@ -120,14 +121,14 @@ export default function SessionDetailPage() {
     }
 
     fetchSession();
-  }, [params.id]);
+  }, [sessionId]);
 
   async function closeSession() {
     if (!confirm('Are you sure you want to close this session?')) return;
     setClosing(true);
     try {
       const res = await fetch(
-        `${getApiBase()}/api/v1/sessions/${params.id}/end`,
+        `${getApiBase()}/api/v1/sessions/${sessionId}/end`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

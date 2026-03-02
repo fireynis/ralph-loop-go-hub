@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { PhaseIndicator } from '@/components/phase-indicator';
 import { IterationTable } from '@/components/iteration-table';
@@ -81,8 +81,8 @@ function computeDurationData(records: IterationRecord[]): DurationDataPoint[] {
 }
 
 export default function InstanceDetailPage() {
-  const params = useParams();
-  const instanceId = decodeURIComponent(params.id as string);
+  const pathname = usePathname();
+  const instanceId = decodeURIComponent(pathname.split('/').pop() ?? '');
 
   const instance = useInstanceStore((state) => state.instances.get(instanceId));
 

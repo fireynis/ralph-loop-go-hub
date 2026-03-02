@@ -78,11 +78,11 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) spaHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
+		path = strings.TrimRight(path, "/")
 
 		// Try exact file match first (JS, CSS, images, etc.)
 		if path != "" {
-			if f, err := s.frontendFS.Open(path); err == nil {
-				f.Close()
+			if info, err := fs.Stat(s.frontendFS, path); err == nil && !info.IsDir() {
 				http.FileServerFS(s.frontendFS).ServeHTTP(w, r)
 				return
 			}
