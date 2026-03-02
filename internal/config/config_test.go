@@ -86,6 +86,19 @@ webhooks:
 	}
 }
 
+func TestLoad_MissingFileReturnsDefaults(t *testing.T) {
+	cfg, err := Load("/nonexistent/config.yaml")
+	if err != nil {
+		t.Fatalf("expected no error for missing file, got: %v", err)
+	}
+	if cfg.Server.Port != 8080 {
+		t.Errorf("port = %d, want 8080", cfg.Server.Port)
+	}
+	if cfg.Storage.Driver != "sqlite" {
+		t.Errorf("driver = %s, want sqlite", cfg.Storage.Driver)
+	}
+}
+
 func TestLoadConfig_PartialYAML(t *testing.T) {
 	configYAML := `
 server:
