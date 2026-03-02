@@ -1,8 +1,10 @@
 package server
 
 import (
+	"io/fs"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 
@@ -20,6 +22,7 @@ type Server struct {
 	dispatcher *webhook.Dispatcher
 	config     config.Config
 	upgrader   websocket.Upgrader
+	frontendFS fs.FS // embedded frontend files, may be nil
 }
 
 // New creates a Server with all dependencies wired in.
@@ -33,6 +36,11 @@ func New(cfg config.Config, st store.Store, h *ws.Hub, d *webhook.Dispatcher) *S
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
+}
+
+// SetFrontendFS sets the embedded frontend filesystem for serving the SPA.
+func (s *Server) SetFrontendFS(fsys fs.FS) {
+	s.frontendFS = fsys
 }
 
 // Handler returns the fully wired http.Handler with all routes registered.
@@ -60,7 +68,65 @@ func (s *Server) Handler() http.Handler {
 	// WebSocket endpoint (no auth).
 	mux.HandleFunc("GET /api/v1/ws", s.handleWS)
 
+	if s.frontendFS != nil {
+		mux.Handle("/", s.spaHandler())
+	}
+
 	return corsMiddleware(s.config.CORS.AllowedOrigins, mux)
+}
+
+func (s *Server) spaHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+
+		// Try exact file match first (JS, CSS, images, etc.)
+		if path != "" {
+			if f, err := s.frontendFS.Open(path); err == nil {
+				f.Close()
+				http.FileServerFS(s.frontendFS).ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Next.js static export naming: /sessions -> sessions.html
+		// Dynamic routes: /instances/abc -> instances/_.html, /sessions/abc -> sessions/_.html
+		candidates := []string{"index.html"}
+		if path != "" {
+			// Try path.html (e.g., sessions -> sessions.html)
+			candidates = []string{path + ".html"}
+			// Try path/index.html
+			candidates = append(candidates, path+"/index.html")
+			// For dynamic routes like instances/abc, try instances/_.html
+			if idx := strings.LastIndex(path, "/"); idx >= 0 {
+				candidates = append(candidates, path[:idx]+"/_.html")
+			}
+			// Fallback to index.html for SPA routing
+			candidates = append(candidates, "index.html")
+		}
+
+		for _, candidate := range candidates {
+			if f, err := s.frontendFS.Open(candidate); err == nil {
+				f.Close()
+				data, err := fs.ReadFile(s.frontendFS, candidate)
+				if err != nil {
+					http.Error(w, "internal error", http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Write(data)
+				return
+			}
+		}
+
+		// Final fallback
+		data, err := fs.ReadFile(s.frontendFS, "index.html")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(data)
+	})
 }
 
 // handleWS upgrades an HTTP connection to a WebSocket, registers the client

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fireynis/ralph-hub/internal/config"
+	"github.com/fireynis/ralph-hub/internal/frontend"
 	"github.com/fireynis/ralph-hub/internal/server"
 	"github.com/fireynis/ralph-hub/internal/store"
 	"github.com/fireynis/ralph-hub/internal/webhook"
@@ -44,6 +46,12 @@ func main() {
 	hub := ws.NewHub()
 	dispatcher := webhook.New(cfg.Webhooks)
 	srv := server.New(cfg, st, hub, dispatcher)
+
+	frontendFS, err := fs.Sub(frontend.Dist, "dist")
+	if err != nil {
+		log.Fatalf("failed to access embedded frontend: %v", err)
+	}
+	srv.SetFrontendFS(frontendFS)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	httpServer := &http.Server{
