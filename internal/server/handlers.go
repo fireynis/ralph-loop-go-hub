@@ -102,6 +102,10 @@ func (s *Server) handleGetInstanceHistory(w http.ResponseWriter, r *http.Request
 func (s *Server) handleGetSessions(w http.ResponseWriter, r *http.Request) {
 	filter := store.SessionFilter{}
 
+	if id := r.URL.Query().Get("instance_id"); id != "" {
+		filter.InstanceID = id
+	}
+
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err == nil && parsed > 0 {

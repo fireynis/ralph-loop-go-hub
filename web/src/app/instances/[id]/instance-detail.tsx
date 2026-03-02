@@ -7,6 +7,7 @@ import { PhaseIndicator } from '@/components/phase-indicator';
 import { IterationTable } from '@/components/iteration-table';
 import type { IterationRecord } from '@/components/iteration-table';
 import { useInstanceStore } from '@/store/instances';
+import type { Session } from '@/lib/types';
 import {
   LineChart,
   Line,
@@ -89,11 +90,15 @@ export default function InstanceDetailPage() {
   const [records, setRecords] = useState<IterationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [closingSession, setClosingSession] = useState<string | null>(null);
 
   useEffect(() => {
+    const baseUrl = getApiBaseUrl();
+
     async function fetchHistory() {
       try {
-        const baseUrl = getApiBaseUrl();
         const res = await fetch(
           `${baseUrl}/api/v1/instances/${encodeURIComponent(instanceId)}/history`,
         );
@@ -109,8 +114,57 @@ export default function InstanceDetailPage() {
       }
     }
 
+    async function fetchSessions() {
+      try {
+        const res = await fetch(
+          `${baseUrl}/api/v1/sessions?instance_id=${encodeURIComponent(instanceId)}`,
+        );
+        if (!res.ok) {
+          throw new Error(`Failed to fetch sessions: ${res.status}`);
+        }
+        const data = await res.json();
+        setSessions(data ?? []);
+      } catch {
+        // Non-critical — sessions section just won't show.
+      } finally {
+        setSessionsLoading(false);
+      }
+    }
+
     fetchHistory();
+    fetchSessions();
   }, [instanceId]);
+
+  async function closeSession(sessionId: string) {
+    if (!confirm('Are you sure you want to close this session?')) return;
+    setClosingSession(sessionId);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/api/v1/sessions/${sessionId}/end`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'manual_close' }),
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `API error: ${res.status}`);
+      }
+      // Update the session in local state.
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.session_id === sessionId
+            ? { ...s, ended_at: new Date().toISOString(), end_reason: 'manual_close' }
+            : s,
+        ),
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to close session');
+    } finally {
+      setClosingSession(null);
+    }
+  }
 
   const analytics = instance?.context?.analytics;
   const passRateData = computePassRateData(records);
@@ -218,6 +272,81 @@ export default function InstanceDetailPage() {
                 : '--'}
             </p>
           </div>
+        </section>
+
+        {/* Sessions */}
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-gray-500">
+            Sessions
+          </h2>
+          {sessionsLoading ? (
+            <p className="text-sm text-gray-400">Loading sessions...</p>
+          ) : sessions.length === 0 ? (
+            <div className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-6 text-center">
+              <p className="text-sm text-gray-400">No sessions found for this instance.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-700">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-800 text-xs uppercase tracking-wide text-gray-400">
+                  <tr>
+                    <th className="px-4 py-3">Session</th>
+                    <th className="px-4 py-3">Started</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Iterations</th>
+                    <th className="px-4 py-3">Tasks</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700 bg-gray-800">
+                  {sessions.map((sess) => (
+                    <tr key={sess.session_id} className="transition-colors hover:bg-gray-700/50">
+                      <td className="px-4 py-2.5">
+                        <a
+                          href={`/sessions/${sess.session_id}`}
+                          className="font-mono text-xs text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          {sess.session_id.slice(0, 8)}...
+                        </a>
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-400">
+                        {new Date(sess.started_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {sess.ended_at ? (
+                          <span className="inline-flex items-center rounded-full border border-gray-600 bg-gray-700/50 px-2.5 py-0.5 text-xs font-medium text-gray-300">
+                            ended
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-700 bg-emerald-900/50 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            running
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-gray-300">
+                        {sess.iterations}
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-gray-300">
+                        {sess.tasks_closed}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        {!sess.ended_at && (
+                          <button
+                            onClick={() => closeSession(sess.session_id)}
+                            disabled={closingSession === sess.session_id}
+                            className="rounded border border-red-700 bg-red-900/30 px-3 py-1 text-xs font-medium text-red-300 hover:bg-red-900/50 disabled:opacity-50"
+                          >
+                            {closingSession === sess.session_id ? 'Closing...' : 'Close'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         {/* Charts */}

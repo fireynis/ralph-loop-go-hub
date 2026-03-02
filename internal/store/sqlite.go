@@ -203,16 +203,23 @@ func (s *SQLiteStore) GetSessions(ctx context.Context, filter SessionFilter) ([]
 		LEFT JOIN events e_end ON
 			json_extract(e_start.context_json, '$.session_id') = json_extract(e_end.context_json, '$.session_id')
 			AND e_end.type = 'session.ended'
-		WHERE e_start.type = 'session.started'
-		ORDER BY e_start.timestamp DESC
-		LIMIT ? OFFSET ?`
+		WHERE e_start.type = 'session.started'`
+
+	args := []any{}
+	if filter.InstanceID != "" {
+		query += ` AND e_start.instance_id = ?`
+		args = append(args, filter.InstanceID)
+	}
+
+	query += ` ORDER BY e_start.timestamp DESC LIMIT ? OFFSET ?`
 
 	limit := filter.Limit
 	if limit == 0 {
 		limit = 50
 	}
+	args = append(args, limit, filter.Offset)
 
-	rows, err := s.db.QueryContext(ctx, query, limit, filter.Offset)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

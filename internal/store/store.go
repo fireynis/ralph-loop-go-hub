@@ -51,11 +51,9 @@ type Session struct {
 
 // SessionFilter specifies criteria for querying sessions.
 type SessionFilter struct {
-	Repo     string     // TODO: implement repo filtering in SQLiteStore.GetSessions
-	DateFrom *time.Time // TODO: implement date range filtering in SQLiteStore.GetSessions
-	DateTo   *time.Time // TODO: implement date range filtering in SQLiteStore.GetSessions
-	Limit    int
-	Offset   int
+	InstanceID string
+	Limit      int
+	Offset     int
 }
 
 // SessionDetail contains a session and all its events.

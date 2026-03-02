@@ -195,16 +195,25 @@ func (s *PostgresStore) GetSessions(ctx context.Context, filter SessionFilter) (
 		LEFT JOIN events e_end ON
 			e_start.context_json->>'session_id' = e_end.context_json->>'session_id'
 			AND e_end.type = 'session.ended'
-		WHERE e_start.type = 'session.started'
-		ORDER BY e_start.timestamp DESC
-		LIMIT $1 OFFSET $2`
+		WHERE e_start.type = 'session.started'`
+
+	args := []any{}
+	paramIdx := 1
+	if filter.InstanceID != "" {
+		query += fmt.Sprintf(` AND e_start.instance_id = $%d`, paramIdx)
+		args = append(args, filter.InstanceID)
+		paramIdx++
+	}
+
+	query += fmt.Sprintf(` ORDER BY e_start.timestamp DESC LIMIT $%d OFFSET $%d`, paramIdx, paramIdx+1)
 
 	limit := filter.Limit
 	if limit == 0 {
 		limit = 50
 	}
+	args = append(args, limit, filter.Offset)
 
-	rows, err := s.db.QueryContext(ctx, query, limit, filter.Offset)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
