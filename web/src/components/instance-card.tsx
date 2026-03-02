@@ -1,7 +1,6 @@
 'use client';
 
 import type { InstanceState } from '@/lib/types';
-import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
 interface InstanceCardProps {
@@ -72,7 +71,7 @@ export function InstanceCard({ instance }: InstanceCardProps) {
   const lastEventAgo = useRelativeTime(instance.last_event);
 
   return (
-    <Link href={`/instances/${encodeURIComponent(instance.instance_id)}`}>
+    <a href={`/instances/${encodeURIComponent(instance.instance_id)}`}>
       <div
         className={`rounded-lg bg-gray-800 border-l-4 ${borderColor} p-4 hover:bg-gray-750 transition-colors cursor-pointer`}
       >
@@ -125,6 +124,6 @@ export function InstanceCard({ instance }: InstanceCardProps) {
           )}
         </div>
       </div>
-    </Link>
+    </a>
   );
 }

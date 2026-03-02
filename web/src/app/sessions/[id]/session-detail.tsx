@@ -259,10 +259,10 @@ export default function SessionDetailPage() {
           </div>
         </div>
 
-        {/* Event Timeline */}
+        {/* Events */}
         <section className="mt-10">
           <h2 className="text-xl font-semibold text-gray-200">
-            Event Timeline
+            Events
           </h2>
           <p className="mt-1 text-sm text-gray-400">
             {events.length} event{events.length !== 1 ? 's' : ''}
@@ -275,41 +275,39 @@ export default function SessionDetailPage() {
               </p>
             </div>
           ) : (
-            <div className="mt-6 space-y-0">
-              {events.map((event, idx) => {
-                const badge = eventBadgeStyle(event.type, event.data);
-                const summary = eventSummary(event);
-                return (
-                  <div key={event.event_id} className="relative flex gap-4">
-                    {/* Timeline line */}
-                    <div className="flex w-6 flex-col items-center">
-                      <div
-                        className={`mt-2 h-3 w-3 rounded-full border ${badge.bg} shrink-0`}
-                      />
-                      {idx < events.length - 1 && (
-                        <div className="w-px flex-1 bg-gray-700" />
-                      )}
-                    </div>
-
-                    {/* Event content */}
-                    <div className="pb-6">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${badge.bg} ${badge.text}`}
-                        >
-                          {event.type}
-                        </span>
-                        <span className="text-xs text-gray-500">
+            <div className="mt-6 overflow-x-auto rounded-lg border border-gray-700">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-800 text-xs uppercase tracking-wide text-gray-400">
+                  <tr>
+                    <th className="px-4 py-3">Time</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700 bg-gray-800">
+                  {[...events].reverse().map((event) => {
+                    const badge = eventBadgeStyle(event.type, event.data);
+                    const summary = eventSummary(event);
+                    return (
+                      <tr key={event.event_id} className="transition-colors hover:bg-gray-700/50">
+                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-gray-400">
                           {formatDate(event.timestamp)}
-                        </span>
-                      </div>
-                      {summary && (
-                        <p className="mt-1 text-sm text-gray-300">{summary}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${badge.bg} ${badge.text}`}
+                          >
+                            {event.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-gray-300">
+                          {summary || '\u2014'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </section>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import type { Session } from '@/lib/types';
 
 const PAGE_SIZE = 20;
@@ -107,12 +106,12 @@ export default function SessionsPage() {
                         className="transition-colors hover:bg-gray-750 hover:bg-gray-700/50"
                       >
                         <td className="px-4 py-3">
-                          <Link
+                          <a
                             href={`/sessions/${session.session_id}`}
                             className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
                           >
                             {session.repo}
-                          </Link>
+                          </a>
                         </td>
                         <td className="px-4 py-3 text-gray-300">
                           {session.epic || '\u2014'}

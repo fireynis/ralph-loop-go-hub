@@ -77,12 +77,21 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) spaHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/")
+		// Use raw path to preserve percent-encoded slashes (e.g. fireynis%2Fknowledge-ingestor).
+		// Go decodes %2F to / in r.URL.Path, which breaks route matching.
+		rawPath := r.URL.RawPath
+		if rawPath == "" {
+			rawPath = r.URL.Path
+		}
+		path := strings.TrimPrefix(rawPath, "/")
 		path = strings.TrimRight(path, "/")
 
 		// Try exact file match first (JS, CSS, images, etc.)
-		if path != "" {
-			if info, err := fs.Stat(s.frontendFS, path); err == nil && !info.IsDir() {
+		// Use the decoded path for filesystem lookups since files don't have %2F in names.
+		decodedPath := strings.TrimPrefix(r.URL.Path, "/")
+		decodedPath = strings.TrimRight(decodedPath, "/")
+		if decodedPath != "" {
+			if info, err := fs.Stat(s.frontendFS, decodedPath); err == nil && !info.IsDir() {
 				http.FileServerFS(s.frontendFS).ServeHTTP(w, r)
 				return
 			}
@@ -92,15 +101,18 @@ func (s *Server) spaHandler() http.Handler {
 		// Dynamic routes: /instances/abc -> instances/_.html, /sessions/abc -> sessions/_.html
 		candidates := []string{"index.html"}
 		if path != "" {
-			// Try path.html (e.g., sessions -> sessions.html)
 			candidates = []string{path + ".html"}
-			// Try path/index.html
 			candidates = append(candidates, path+"/index.html")
-			// For dynamic routes like instances/abc, try instances/_.html
-			if idx := strings.LastIndex(path, "/"); idx >= 0 {
-				candidates = append(candidates, path[:idx]+"/_.html")
+			// Walk up parent directories looking for _.html (dynamic route catch-all).
+			remaining := path
+			for {
+				idx := strings.LastIndex(remaining, "/")
+				if idx < 0 {
+					break
+				}
+				candidates = append(candidates, remaining[:idx]+"/_.html")
+				remaining = remaining[:idx]
 			}
-			// Fallback to index.html for SPA routing
 			candidates = append(candidates, "index.html")
 		}
 
@@ -118,14 +130,7 @@ func (s *Server) spaHandler() http.Handler {
 			}
 		}
 
-		// Final fallback
-		data, err := fs.ReadFile(s.frontendFS, "index.html")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(data)
+		http.NotFound(w, r)
 	})
 }
 
